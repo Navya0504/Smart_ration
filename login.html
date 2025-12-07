@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Login</title>
+    <style>
+        body { font-family: Arial; background: #f2f2f2; text-align: center; padding: 50px; }
+        .box { background:white; width:350px; margin:auto; padding:25px; border-radius:10px; box-shadow:0 0 10px gray; }
+        input { width:90%; padding:10px; margin:10px; border:1px solid gray; border-radius:5px; }
+        button { padding:12px; width:100%; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; }
+        button:hover { background:#45a049; }
+        p { color:red; margin:0; height:18px; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>User Login</h2>
+    <input type="text" id="rationCard" placeholder="Ration Card Number">
+    <input type="text" id="name" placeholder="Name">
+    <input type="text" id="phone" placeholder="Phone Number">
+    <p id="msg"></p>
+    <button id="proceed">Proceed</button>
+</div>
+
+<script>
+document.getElementById('proceed').addEventListener('click', async function() {
+    const cardNumber = document.getElementById('rationCard').value.trim();
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const msg = document.getElementById('msg');
+    msg.textContent = "";
+
+    if (!cardNumber || !name || !phone) {
+        msg.textContent = "Please fill all details!";
+        return;
+    }
+
+    try {
+        const response = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cardNumber, name, phone })
+        });
+
+        const data = await response.json();
+        msg.textContent = data.message;
+
+        if (data.success) {
+            // Login successful → redirect to select slot page
+            window.location.href = 'select.html?card=' + cardNumber;
+        }
+
+    } catch (error) {
+        msg.textContent = "Cannot connect to server.";
+        console.error(error);
+    }
+});
+</script>
+</body>
+</html>

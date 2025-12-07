@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Slot</title>
+    <style>
+        body { font-family: Arial; text-align: center; background: #f2f2f2; padding: 40px; }
+        .box { background:white; width:350px; margin:auto; padding:20px; border-radius:10px; box-shadow:0 0 10px gray; }
+        input, select, button { width:90%; padding:10px; margin:10px; border-radius:5px; border:1px solid gray; font-size:14px; }
+        button { background:#4CAF50; color:white; border:none; cursor:pointer; }
+        button:hover { background:#45a049; }
+        p { color:red; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>Select Your Slot</h2>
+    <input type="date" id="date">
+    <select id="session">
+        <option value="">Select Session</option>
+        <option value="morning">Morning (9:00-12:00)</option>
+        <option value="evening">Evening (4:00-7:00)</option>
+    </select>
+    <select id="slot"><option value="">Select Slot</option></select>
+    <button id="confirm">Confirm Token</button>
+    <p id="msg"></p>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const card = params.get('card');
+if(!card) window.location.href='login.html';
+
+const dateInput = document.getElementById('date');
+const sessionSelect = document.getElementById('session');
+const slotSelect = document.getElementById('slot');
+const msg = document.getElementById('msg');
+
+dateInput.min = new Date().toISOString().split('T')[0];
+
+// 30-min slots for booking
+const slots = {
+    morning:["9:00-9:30","9:30-10:00","10:00-10:30","10:30-11:00","11:00-11:30","11:30-12:00"],
+    evening:["4:00-4:30","4:30-5:00","5:00-5:30","5:30-6:00","6:00-6:30","6:30-7:00"]
+};
+
+const maxPerSlot = 10;
+
+async function updateSlots(){
+    slotSelect.innerHTML = '<option value="">Select Slot</option>';
+    msg.textContent = '';
+
+    const s = sessionSelect.value;
+    const d = dateInput.value;
+    if(!d){ msg.textContent = "Select a date"; return; }
+
+    // Check if user already booked for this date
+    try {
+        const userBookingResp = await fetch(`/bookingDetails?card=${card}&date=${d}`);
+        const userBookingData = await userBookingResp.json();
+        if(userBookingData.success){
+            msg.textContent = "You already booked for this date!";
+            sessionSelect.value = '';
+            return;
+        }
+    } catch(err){
+        console.error(err);
+    }
+
+    if(slots[s]){
+        const slotPromises = slots[s].map(async sl => {
+            try {
+                const slotResp = await fetch(`/availableSlots?date=${d}&session=${s}&slot=${sl}`);
+                const slotData = await slotResp.json();
+                const count = slotData.count || 0;
+                return { slot: sl, count };
+            } catch(err){
+                return { slot: sl, count: 0 };
+            }
+        });
+
+        const slotResults = await Promise.all(slotPromises);
+        slotResults.forEach(slObj => {
+            const opt = document.createElement('option');
+            opt.value = slObj.slot;
+            opt.textContent = `${slObj.slot} (${slObj.count}/${maxPerSlot})`;
+            if(slObj.count >= maxPerSlot) opt.disabled = true;
+            slotSelect.appendChild(opt);
+        });
+    }
+}
+
+sessionSelect.addEventListener('change', updateSlots);
+dateInput.addEventListener('change', updateSlots);
+
+document.getElementById('confirm').addEventListener('click', async ()=>{
+    const d = dateInput.value;
+    const s = sessionSelect.value;
+    const sl = slotSelect.value;
+
+    if(!d || !s || !sl){ msg.textContent = "Fill all details"; return; }
+
+    try {
+        const resp = await fetch('/book', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ card, date: d, session: s, slot: sl })
+        });
+        const data = await resp.json();
+        msg.textContent = data.message;
+        if(data.success){
+            window.location.href = `confirm.html?card=${card}&date=${d}`;
+        }
+    } catch(err){
+        console.error(err);
+        msg.textContent = "Cannot connect to server.";
+    }
+});
+</script>
+</body>
+</html>

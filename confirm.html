@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Booking Confirmation</title>
+    <style>
+        body { font-family: Arial; text-align: center; background: #f2f2f2; padding: 50px; }
+        .box { background:white; width:350px; margin:auto; padding:25px; border-radius:10px; box-shadow:0 0 10px gray; }
+        h2 { color:#4CAF50; }
+        p { font-size:16px; margin:10px 0; }
+        #message { color: #555; font-size:15px; margin-top:20px; }
+        button { padding:12px; width:50%; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; }
+        button:hover { background:#45a049; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>Booking Confirmation</h2>
+    <p id="sessionInfo">Session: </p>
+    <p id="slotInfo">Slot: </p>
+    <p id="tokenInfo">Token Number: </p>
+    <p id="message"></p>
+    <button id="homeBtn">Back to Home</button>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const card = params.get('card');
+const date = params.get('date');
+
+if(!card || !date) window.location.href = 'login.html';
+
+const sessionEl = document.getElementById('sessionInfo');
+const slotEl = document.getElementById('slotInfo');
+const tokenEl = document.getElementById('tokenInfo');
+const messageEl = document.getElementById('message');
+
+async function loadBooking(){
+    try {
+        const resp = await fetch(`/bookingDetails?card=${card}&date=${date}`);
+        const data = await resp.json();
+        if(data.success){
+            sessionEl.textContent = "Session: " + data.booking.session.charAt(0).toUpperCase() + data.booking.session.slice(1) + " (" + (data.booking.session === 'morning' ? '9:00-12:00' : '4:00-7:00') + ")";
+            slotEl.textContent = "Slot: " + data.booking.slot;
+            tokenEl.textContent = "Token Number: " + data.booking.token;
+            messageEl.textContent = "You have successfully booked your slot. You will receive an SMS with your token number. Please go to your ration center at the selected time and date.";
+        } else {
+            sessionEl.textContent = "";
+            slotEl.textContent = "";
+            tokenEl.textContent = "";
+            messageEl.textContent = "";
+            alert(data.message);
+            window.location.href = 'login.html';
+        }
+    } catch(err){
+        console.error(err);
+        alert("Cannot fetch booking details.");
+        window.location.href = 'login.html';
+    }
+}
+
+loadBooking();
+
+document.getElementById('homeBtn').addEventListener('click', ()=>{
+    window.location.href = 'login.html';
+});
+</script>
+</body>
+</html>
